@@ -1,0 +1,66 @@
+# Настройки стенда. Скопируйте файл в settings.yaml и поправьте пути под свою машину.
+# settings.yaml в git не попадает. Другой файл можно указать ключом --settings или переменной PRISM_EDT_SETTINGS.
+
+paths:
+  # Клон PRISM (https://github.com/genlab-1c/prism). Задачи B1–B20 и сборщик конфигураций берутся оттуда.
+  prism: C:/tools/prism
+  # Рабочий каталог стенда: исходники проектов, временные базы оценщика, замки. Можно удалить, всё пересоздаётся.
+  work: ./work
+  # Результаты прогонов: <модель>__<вариант>/<задача>/run<N>/ (meta.json, transcript.jsonl, candidate.bsl, score.json).
+  results: ./results
+
+platform:
+  # Каталог bin платформы 1С:Предприятие 8.3 (нужны ibcmd.exe, 1cv8.exe, 1cv8c.exe).
+  bin: C:/Program Files/1cv8/8.3.27.2214/bin
+  # Сколько оценщиков одновременно запускают клиента 1С. Каждый держит одну лицензию на время проверки (~2 минуты).
+  license_slots: 1
+  # Предел клиентских процессов 1С на машине (для лицензии разработчика — 5). Выше него оценщик ждёт.
+  license_limit: 5
+
+edt:
+  # 1С:EDT и её JVM. Нужны только для переключения наборов инструментов (bench.py mode) — EDT перезапускается.
+  exe: C:/EDT/components/1c-edt-2026.1.2+2-x86_64/1cedt.exe
+  javaw: C:/EDT/components/axiom-jdk-full-17.0.16+12-x86_64/bin/javaw.exe
+  # Сколько ждать после перезапуска EDT, пока откроются проекты задач (иначе первая задача ловит «context is not started»).
+  start_delay_s: 180
+  # Необязательно: свой файл запуска EDT (копия 1cedt.ini) для стенда — например, с -Xmx3072m вместо общих 8 ГБ:
+  # проекты задач маленькие, а несколько экземпляров EDT с большой кучей забирают память у системы.
+  # launcher_ini: C:/EDT/edt-bench.ini
+  # Экземпляры EDT стенда: у каждого своя рабочая область и порт EDT MCP (настройка плагина «Порт сервера»).
+  # Наборы инструментов (30, 102, группы) включаются на весь экземпляр, поэтому разные наборы удобно гонять на разных
+  # экземплярах одновременно: bench.py run ... --edt 2.
+  instances:
+    1: {workspace: C:/EDT/workspaces/prism-bench, port: 8769}
+    # 2: {workspace: C:/EDT/workspaces/prism-bench2, port: 8770}
+
+agent:
+  # Агент — Claude Code CLI (команда claude в PATH).
+  # auth: api — через сервер модели ниже; subscription — по подписке Claude Code (только модели Anthropic).
+  auth: api
+  # Сервер модели с API Anthropic (Messages). Пусто — api.anthropic.com.
+  # Для других моделей — шлюз с совместимым API (LiteLLM, OpenRouter, свой прокси) или llama-server.
+  base_url: ""
+  # Имя переменной окружения, в которой лежит ключ сервера модели. Сам ключ в этот файл не пишется.
+  api_key_env: ANTHROPIC_API_KEY
+  # Предел одной задачи, секунды. Медленным локальным моделям нужно больше (1500).
+  task_timeout: 900
+
+# Параметры по умолчанию для bench.py run. Любой из них перекрывается ключом командной строки.
+run:
+  models: [claude-sonnet-5-5]
+  variant: composerun          # см. bench.py variants
+  tasks: B1-B20                # B1-B20, B21-B29, B1-B29 или список через запятую
+  runs: [1, 2, 3]
+  edt: 1
+
+# Цены для столбца «$/задачу» в отчёте, USD за 1 млн токенов: вход, чтение кэша, запись кэша, выход.
+# Ключ — имя модели так, как оно стоит в имени каталога результатов. Модель без цены — прочерк.
+prices:  # тарифы OpenRouter на 26.11.2026 — те же, что в статье
+  claude-opus-5-5: [4.0, 0.2, 5.0, 20.0]
+  claude-sonnet-5-5: [2.0, 0.1, 2.5, 10.0]
+  claude-haiku-5-5: [0.1, 0.01, 0.125, 0.5]
+  openrouter_deepseek_deepseek-v4.1-flash: [0.0507, 0.001014, 0.0507, 0.2028]
+  openrouter_minimax_minimax-m3: [0.3, 0.06, 0.3, 1.2]
+  openrouter_google_gemini-4-hydrogen: [1.5, 0.075, 0.0833, 7.5]
+  openrouter_openai_gpt-6-astra: [10.0, 1.0, 12.5, 50.0]
+  openrouter_qwen_qwen3.8-27b: [0.06, 0.059, 0.06, 1.96]
